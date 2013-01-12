@@ -98,7 +98,10 @@
   CGImageRef cgImg = [context createCGImage:croppedImage fromRect:[croppedImage extent]];
 
   UIImage *returnedImage = [UIImage imageWithCGImage:cgImg scale:1.0f orientation:UIImageOrientationUp];
+  
   CGImageRelease(cgImg);
+  [resizeFilter setValue:nil forKey:@"inputImage"];
+  [cropFilter setValue:nil forKey:@"inputImage"];
   
   return returnedImage;
   
