@@ -11,7 +11,6 @@
 
 @interface SSViewController () <UIPickerViewDataSource, UIPickerViewDelegate>
 @property (nonatomic, strong) NSArray *items;
-
 @end
 
 @implementation SSViewController
@@ -41,15 +40,29 @@
   if (row == 0)
     return;
   
-  self.imageView1.image = [[UIImage imageNamed:self.items[row]]
-                           faceFirstImageScaledToFillSize:self.imageView1.frame.size];
+  __weak SSViewController *wSelf = self;
+  dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+    UIImage *image = [[UIImage imageNamed:wSelf.items[row]] faceFirstImageScaledToFillSize:wSelf.imageView1.frame.size];
+    dispatch_async(dispatch_get_main_queue(), ^{
+      wSelf.imageView1.image = image;
+    });
+  });
+  
+  dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+    UIImage *image = [[UIImage imageNamed:wSelf.items[row]] faceFirstImageScaledToFillSize:wSelf.imageView2.frame.size];
+    dispatch_async(dispatch_get_main_queue(), ^{
+      wSelf.imageView2.image = image;
+    });
 
-  self.imageView2.image = [[UIImage imageNamed:self.items[row]]
-                           faceFirstImageScaledToFillSize:self.imageView2.frame.size];
+  });
+  
+  dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+    UIImage *image = [[UIImage imageNamed:wSelf.items[row]] faceFirstImageScaledToFillSize:wSelf.imageView3.frame.size];
+    dispatch_async(dispatch_get_main_queue(), ^{
+      wSelf.imageView3.image = image;
+    });
 
-  self.imageView3.image = [[UIImage imageNamed:self.items[row]]
-                           faceFirstImageScaledToFillSize:self.imageView3.frame.size];
-
+  });
 
 }
 

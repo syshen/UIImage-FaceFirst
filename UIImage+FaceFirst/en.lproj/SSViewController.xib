@@ -65,6 +65,7 @@
 							<int key="NSColorSpace">1</int>
 							<bytes key="NSRGB">MC43NTY4NjI3NDUxIDAuNzU2ODYyNzQ1MSAwLjc1Njg2Mjc0NTEAA</bytes>
 						</object>
+						<int key="IBUIContentMode">4</int>
 						<bool key="IBUIUserInteractionEnabled">NO</bool>
 						<string key="targetRuntimeIdentifier">IBCocoaTouchFramework</string>
 					</object>

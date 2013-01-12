@@ -12,11 +12,11 @@
 
 @implementation UIImage (FaceFirst)
 
-- (NSArray*) detectFaceRects {
+- (NSArray*) detectFaceRectsInCIImage:(CIImage*)ciImage withContext:(CIContext*)context {
   
-  CIDetector *faceDetector = [CIDetector detectorOfType:CIDetectorTypeFace context:nil options:@{CIDetectorAccuracy: CIDetectorAccuracyLow}];
+  CIDetector *faceDetector = [CIDetector detectorOfType:CIDetectorTypeFace context:context options:@{CIDetectorAccuracy: CIDetectorAccuracyLow}];
   
-  CIImage *ciImage = [CIImage imageWithCGImage:[self CGImage]];
+  // CIImage *ciImage = [CIImage imageWithCGImage:[self CGImage]];
   NSArray *features = [faceDetector featuresInImage:ciImage options:nil];
   NSMutableArray *returnBounds = [NSMutableArray array];
   
@@ -25,6 +25,19 @@
   }
   
   return [NSArray arrayWithArray:returnBounds];
+  
+}
+
++ (CIContext *)processingContext {
+  
+  static CIContext *ctx = nil;
+  
+  static dispatch_once_t onceToken;
+  dispatch_once(&onceToken, ^{
+    ctx = [CIContext contextWithOptions:nil];
+  });
+  
+  return ctx;
   
 }
 
@@ -45,13 +58,14 @@
   CGFloat xRatio = rect.size.width / self.size.width;
   CGFloat yRatio = rect.size.height / self.size.height;
   
-  NSArray *faceRects = [self detectFaceRects];
+  CIContext *context = [[self class] processingContext];
+  
+  CIImage *ciImage = [CIImage imageWithCGImage:[self CGImage]];
+  NSArray *faceRects = [self detectFaceRectsInCIImage:ciImage withContext:context];
   if (faceRects.count) {
 
     NSValue *value = faceRects[(NSUInteger)(faceRects.count/2)];
     CGRect faceRect = [value CGRectValue];
-    // Change coordinate system
-    faceRect.origin.y = self.size.height - faceRect.origin.y - faceRect.size.height;
     
     CGFloat xOffset = MAX((faceRect.origin.x + faceRect.size.width/2 - (size.width/(xRatio*2))), 0);
     CGFloat yOffset = MAX((faceRect.origin.y + faceRect.size.height/2 - (size.height/(yRatio*2))), 0);
@@ -61,15 +75,32 @@
     if ((yOffset + size.height/yRatio) > self.size.height)
       yOffset = self.size.height - size.height/yRatio;
 
-    rect.origin.x = (rect.origin.x - xOffset * xRatio);
-    rect.origin.y = (rect.origin.y - yOffset * yRatio);
+    rect.origin.x = (rect.origin.x + xOffset * xRatio);
+    rect.origin.y = (rect.origin.y + yOffset * yRatio);
+    rect.size = size;
+  } else {
+    rect.origin.x = 0.0f;
+    rect.origin.y = 0.0f;
+    rect.size = size;
   }
 
-  UIGraphicsBeginImageContextWithOptions(size, NO, 0.0f);
-  [self drawInRect:rect];
-  UIImage *image = UIGraphicsGetImageFromCurrentImageContext();
-  UIGraphicsEndImageContext();
-  return image;
+  CIFilter *resizeFilter = [CIFilter filterWithName:@"CILanczosScaleTransform"];
+  [resizeFilter setValue:ciImage forKey:@"inputImage"];
+  [resizeFilter setValue:[NSNumber numberWithFloat:1.0f] forKey:@"inputAspectRatio"];
+  [resizeFilter setValue:[NSNumber numberWithFloat:xRatio] forKey:@"inputScale"];
+ 
+  CIFilter *cropFilter = [CIFilter filterWithName:@"CICrop"];
+  CIVector *cropRect = [CIVector vectorWithX:rect.origin.x Y:rect.origin.y Z:rect.size.width W:rect.size.height];
+  [cropFilter setValue:resizeFilter.outputImage forKey:@"inputImage"];
+  [cropFilter setValue:cropRect forKey:@"inputRectangle"];
+  CIImage *croppedImage = cropFilter.outputImage;
+
+  CGImageRef cgImg = [context createCGImage:croppedImage fromRect:[croppedImage extent]];
+
+  UIImage *returnedImage = [UIImage imageWithCGImage:cgImg scale:1.0f orientation:UIImageOrientationUp];
+  CGImageRelease(cgImg);
+  
+  return returnedImage;
   
 }
 
